@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { useNavigate } from "react-router-dom";
 import Icon from "@/components/ui/icon";
 
 const YARN_IMAGE = "https://cdn.poehali.dev/projects/b8c5241f-9e37-43c2-bddb-46c3970376ae/files/c0b2a2d0-3d80-4f8f-869f-2ae1c6e569d2.jpg";
@@ -35,6 +36,7 @@ const DELIVERY_OPTIONS = [
 ];
 
 export default function Index() {
+  const navigate = useNavigate();
   const [activeSection, setActiveSection] = useState("catalog");
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [cartCount, setCartCount] = useState(0);
@@ -82,7 +84,7 @@ export default function Index() {
 
           <div className="flex items-center gap-3">
             <button
-              onClick={() => scrollTo("contacts")}
+              onClick={() => navigate("/login")}
               className="hidden md:flex items-center gap-2 text-white/70 hover:text-white text-sm transition-colors"
             >
               <Icon name="User" size={16} />
@@ -120,7 +122,7 @@ export default function Index() {
               </button>
             ))}
             <button
-              onClick={() => scrollTo("contacts")}
+              onClick={() => navigate("/login")}
               className="text-white/80 hover:text-iip-pink text-left py-2 font-body transition-colors"
             >
               Личный кабинет
