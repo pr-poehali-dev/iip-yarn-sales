@@ -43,7 +43,6 @@ export default function Index() {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [cart, setCart] = useState<CartItem[]>([]);
   const [cartOpen, setCartOpen] = useState(false);
-  const [activeFilter, setActiveFilter] = useState("Все");
   const [addedProduct, setAddedProduct] = useState<number | null>(null);
 
   const cartCount = cart.reduce((s, i) => s + i.qty, 0);
@@ -79,8 +78,6 @@ export default function Index() {
   const removeFromCart = (productId: number) => {
     setCart(prev => prev.filter(i => i.id !== productId));
   };
-
-  const filters = ["Все", "Хлопок", "Меринос", "Альпака", "Кашемир", "Лён", "Бамбук"];
 
   return (
     <div className="min-h-screen bg-white font-body">
@@ -363,86 +360,63 @@ export default function Index() {
 
       {/* CATALOG */}
       <section id="catalog" className="py-20 bg-iip-cream">
-        <div className="max-w-7xl mx-auto px-4">
-          <div className="flex flex-col md:flex-row md:items-end justify-between mb-10 gap-4">
-            <div>
-              <p className="text-iip-pink font-display text-sm font-bold mb-2 tracking-widest uppercase">Ассортимент</p>
-              <h2 className="font-display font-black text-4xl text-iip-dark">КАТАЛОГ</h2>
-            </div>
-            <div className="flex flex-wrap gap-2">
-              {filters.map(f => (
-                <button
-                  key={f}
-                  onClick={() => setActiveFilter(f)}
-                  className={`px-4 py-2 rounded-full text-sm font-body transition-all ${
-                    activeFilter === f
-                      ? "bg-iip-dark text-white"
-                      : "bg-white text-iip-dark/60 hover:bg-iip-dark/5 border border-iip-dark/10"
-                  }`}
-                >
-                  {f}
-                </button>
-              ))}
-            </div>
-          </div>
+        <div className="max-w-5xl mx-auto px-4">
+          <h2 className="font-display font-black text-4xl text-iip-dark mb-10">КАТАЛОГ</h2>
 
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+          <div className="space-y-3">
             {PRODUCTS.map(product => {
               const qtyInCart = cart.find(i => i.id === product.id)?.qty ?? 0;
               return (
                 <div
                   key={product.id}
-                  className="group bg-white rounded-3xl overflow-hidden shadow-sm hover:shadow-xl transition-all duration-300 hover:-translate-y-1"
+                  className="flex items-center gap-4 bg-white rounded-2xl px-5 py-4 hover:shadow-md transition-all group"
                 >
+                  {/* Цветной маркер */}
                   <div
-                    className="h-48 relative overflow-hidden"
+                    className="w-10 h-10 rounded-xl flex-shrink-0"
                     style={{ backgroundColor: product.color }}
-                  >
-                    <div className="absolute inset-0 opacity-20"
-                      style={{ backgroundImage: 'repeating-linear-gradient(45deg, rgba(255,255,255,0.1) 0px, rgba(255,255,255,0.1) 2px, transparent 2px, transparent 20px)' }}
-                    />
-                    <div className="absolute bottom-4 left-4 text-white/80 font-body text-sm">{product.fiber}</div>
-                    {product.tag && (
-                      <div className="absolute top-4 right-4 bg-iip-dark text-white text-xs font-display font-bold px-3 py-1 rounded-full">
-                        {product.tag}
-                      </div>
-                    )}
-                    {qtyInCart > 0 && (
-                      <div className="absolute top-4 left-4 bg-iip-mint text-white text-xs font-display font-black px-3 py-1 rounded-full">
-                        {qtyInCart} в корзине
-                      </div>
-                    )}
-                    <div className="absolute -right-8 -bottom-8 w-32 h-32 rounded-full border-4 border-white/20" />
-                    <div className="absolute -right-4 -bottom-4 w-20 h-20 rounded-full border-4 border-white/15" />
+                  />
+
+                  {/* Название и состав */}
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <span className="font-display font-bold text-iip-dark">{product.name}</span>
+                      {product.tag && (
+                        <span className="text-xs font-display font-bold px-2 py-0.5 rounded-full bg-iip-dark text-white">
+                          {product.tag}
+                        </span>
+                      )}
+                      {qtyInCart > 0 && (
+                        <span className="text-xs font-display font-bold px-2 py-0.5 rounded-full bg-iip-mint text-white">
+                          {qtyInCart} в корзине
+                        </span>
+                      )}
+                    </div>
+                    <span className="text-muted-foreground text-sm font-body">{product.fiber} · {product.weight}</span>
                   </div>
 
-                  <div className="p-5">
-                    <h3 className="font-display font-bold text-lg text-iip-dark mb-1">{product.name}</h3>
-                    <p className="text-muted-foreground text-sm font-body mb-4">{product.weight}</p>
-                    <div className="flex items-center justify-between">
-                      <span className="font-display font-black text-xl text-iip-dark">{product.price}</span>
-                      <button
-                        onClick={() => addToCart(product.id)}
-                        className={`flex items-center gap-2 px-4 py-2 rounded-full text-sm font-display font-bold transition-all ${
-                          addedProduct === product.id
-                            ? "bg-iip-mint text-white scale-95"
-                            : "bg-iip-dark text-white hover:bg-iip-pink hover:scale-105"
-                        }`}
-                      >
-                        <Icon name={addedProduct === product.id ? "Check" : "Plus"} size={14} />
-                        {addedProduct === product.id ? "Добавлено" : "В корзину"}
-                      </button>
-                    </div>
-                  </div>
+                  {/* Цена */}
+                  <span className="font-display font-black text-lg text-iip-dark flex-shrink-0 hidden sm:block">
+                    {product.price}
+                  </span>
+
+                  {/* Кнопка */}
+                  <button
+                    onClick={() => addToCart(product.id)}
+                    className={`flex items-center gap-1.5 px-4 py-2 rounded-full text-sm font-display font-bold transition-all flex-shrink-0 ${
+                      addedProduct === product.id
+                        ? "bg-iip-mint text-white"
+                        : "bg-iip-dark text-white hover:bg-iip-pink"
+                    }`}
+                  >
+                    <Icon name={addedProduct === product.id ? "Check" : "Plus"} size={14} />
+                    <span className="hidden sm:inline">
+                      {addedProduct === product.id ? "Добавлено" : "В корзину"}
+                    </span>
+                  </button>
                 </div>
               );
             })}
-          </div>
-
-          <div className="text-center mt-10">
-            <button className="border-2 border-iip-dark text-iip-dark hover:bg-iip-dark hover:text-white px-8 py-4 rounded-full font-display font-bold text-sm transition-all">
-              Показать все товары
-            </button>
           </div>
         </div>
       </section>
