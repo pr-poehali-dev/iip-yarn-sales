@@ -1,7 +1,11 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
 import Icon from "@/components/ui/icon";
-import { PRODUCTS, CartItem } from "./Index";
+import { CartItem } from "./Index";
+
+const API = "https://functions.poehali.dev/b597fd9a-ad15-471a-9c9a-23f9039e704f";
+type ApiProduct = { id: number; name: string; priceNum: number; color: string; weight: string };
+
 
 type DeliveryType = "cdek" | "post" | "courier" | "pickup";
 type PaymentType = "card" | "sbp" | "cash";
@@ -15,6 +19,8 @@ export default function Checkout() {
   const [delivery, setDelivery] = useState<DeliveryType>("cdek");
   const [payment, setPayment] = useState<PaymentType>("card");
   const [submitted, setSubmitted] = useState(false);
+  const [sending, setSending] = useState(false);
+  const [apiProducts, setApiProducts] = useState<ApiProduct[]>([]);
 
   const [form, setForm] = useState({
     name: "", phone: "", email: "", city: "", address: "", comment: "",
@@ -22,8 +28,14 @@ export default function Checkout() {
 
   const set = (key: string, val: string) => setForm(prev => ({ ...prev, [key]: val }));
 
+  useEffect(() => {
+    fetch(`${API}?route=products`).then(r => r.json()).then(setApiProducts);
+  }, []);
+
+  const getProduct = (id: number) => apiProducts.find(p => p.id === id);
+
   const cartTotal = cart.reduce((s, i) => {
-    const p = PRODUCTS.find(p => p.id === i.id);
+    const p = getProduct(i.id);
     return s + (p ? p.priceNum * i.qty : 0);
   }, 0);
 
@@ -36,8 +48,26 @@ export default function Checkout() {
 
   const total = cartTotal + deliveryCost;
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    setSending(true);
+    await fetch(`${API}?route=orders`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        customerName: form.name,
+        phone: form.phone,
+        email: form.email,
+        city: form.city,
+        address: form.address,
+        delivery,
+        payment,
+        comment: form.comment,
+        items: cart,
+        total,
+      }),
+    });
+    setSending(false);
     setSubmitted(true);
   };
 
@@ -269,7 +299,8 @@ export default function Checkout() {
 
               <div className="space-y-3 mb-4">
                 {cart.map(item => {
-                  const product = PRODUCTS.find(p => p.id === item.id)!;
+                  const product = getProduct(item.id);
+                  if (!product) return null;
                   return (
                     <div key={item.id} className="flex items-center gap-3">
                       <div
@@ -315,10 +346,11 @@ export default function Checkout() {
 
             <button
               type="submit"
-              className="w-full bg-iip-pink hover:bg-iip-pink/90 text-white py-4 rounded-2xl font-display font-bold text-sm transition-all hover:shadow-lg hover:shadow-iip-pink/25 flex items-center justify-center gap-2"
+              disabled={sending}
+              className="w-full bg-iip-pink hover:bg-iip-pink/90 disabled:opacity-60 text-white py-4 rounded-2xl font-display font-bold text-sm transition-all hover:shadow-lg hover:shadow-iip-pink/25 flex items-center justify-center gap-2"
             >
-              <Icon name="ShoppingBag" size={16} />
-              Подтвердить заказ
+              <Icon name={sending ? "Loader" : "ShoppingBag"} size={16} />
+              {sending ? "Отправляем..." : "Подтвердить заказ"}
             </button>
 
             <p className="text-center text-xs text-muted-foreground font-body px-2 leading-relaxed">

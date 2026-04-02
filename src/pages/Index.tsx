@@ -1,7 +1,8 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import Icon from "@/components/ui/icon";
 
+const API = "https://functions.poehali.dev/b597fd9a-ad15-471a-9c9a-23f9039e704f";
 const YARN_IMAGE = "https://cdn.poehali.dev/projects/b8c5241f-9e37-43c2-bddb-46c3970376ae/files/c0b2a2d0-3d80-4f8f-869f-2ae1c6e569d2.jpg";
 
 const NAV_ITEMS = [
@@ -12,14 +13,7 @@ const NAV_ITEMS = [
   { id: "contacts", label: "Контакты" },
 ];
 
-export const PRODUCTS = [
-  { id: 1, name: "Хлопок PURE", weight: "100г / 200м", priceNum: 590, price: "590 ₽", color: "#F03E6E", tag: "Хит", fiber: "Хлопок 100%" },
-  { id: 2, name: "Меринос SOFT", weight: "100г / 180м", priceNum: 890, price: "890 ₽", color: "#2ECC8F", tag: "Новинка", fiber: "Меринос 100%" },
-  { id: 3, name: "Лён NATURAL", weight: "100г / 250м", priceNum: 720, price: "720 ₽", color: "#FFD234", tag: "", fiber: "Лён 100%" },
-  { id: 4, name: "Альпака CLOUD", weight: "50г / 150м", priceNum: 1290, price: "1 290 ₽", color: "#7C3AED", tag: "Premium", fiber: "Альпака 80%, Шёлк 20%" },
-  { id: 5, name: "Бамбук BREEZE", weight: "100г / 220м", priceNum: 650, price: "650 ₽", color: "#FF6B35", tag: "", fiber: "Бамбук 100%" },
-  { id: 6, name: "Кашемир LUXE", weight: "50г / 120м", priceNum: 2100, price: "2 100 ₽", color: "#E91E8C", tag: "Лимит", fiber: "Кашемир 100%" },
-];
+export type Product = { id: number; name: string; weight: string; priceNum: number; price: string; color: string; tag: string; fiber: string; inStock: boolean };
 
 const REVIEWS = [
   { id: 1, name: "Анна К.", city: "Москва", text: "Пряжа невероятного качества! Хлопок PURE такой мягкий — связала дочке свитер, и она не хочет его снимать.", rating: 5, avatar: "🧶" },
@@ -44,10 +38,17 @@ export default function Index() {
   const [cart, setCart] = useState<CartItem[]>([]);
   const [cartOpen, setCartOpen] = useState(false);
   const [addedProduct, setAddedProduct] = useState<number | null>(null);
+  const [products, setProducts] = useState<Product[]>([]);
+
+  useEffect(() => {
+    fetch(`${API}?route=products`)
+      .then(r => r.json())
+      .then(setProducts);
+  }, []);
 
   const cartCount = cart.reduce((s, i) => s + i.qty, 0);
   const cartTotal = cart.reduce((s, i) => {
-    const p = PRODUCTS.find(p => p.id === i.id);
+    const p = products.find(p => p.id === i.id);
     return s + (p ? p.priceNum * i.qty : 0);
   }, 0);
 
@@ -130,7 +131,8 @@ export default function Index() {
             </div>
           ) : (
             cart.map(item => {
-              const product = PRODUCTS.find(p => p.id === item.id)!;
+              const product = products.find(p => p.id === item.id);
+              if (!product) return null;
               return (
                 <div key={item.id} className="flex gap-4 items-center group">
                   {/* Цветной превью */}
@@ -364,7 +366,10 @@ export default function Index() {
           <h2 className="font-display font-black text-4xl text-iip-dark mb-10">КАТАЛОГ</h2>
 
           <div className="space-y-3">
-            {PRODUCTS.map(product => {
+            {products.length === 0 && (
+              <div className="text-center py-10 text-muted-foreground font-body">Загружаем каталог...</div>
+            )}
+            {products.map(product => {
               const qtyInCart = cart.find(i => i.id === product.id)?.qty ?? 0;
               return (
                 <div

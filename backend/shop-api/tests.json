@@ -1,0 +1,38 @@
+{
+  "tests": [
+    {
+      "name": "GET products",
+      "method": "GET",
+      "path": "/?route=products",
+      "expectedStatus": 200,
+      "bodyMatcher": "partial"
+    },
+    {
+      "name": "GET orders (no key = 403)",
+      "method": "GET",
+      "path": "/?route=orders",
+      "expectedStatus": 403,
+      "bodyMatcher": "partial"
+    },
+    {
+      "name": "POST order",
+      "method": "POST",
+      "path": "/?route=orders",
+      "body": {
+        "customerName": "Тест",
+        "phone": "+7 999 000 00 00",
+        "email": "test@test.ru",
+        "city": "Москва",
+        "address": "ул. Тест, 1",
+        "delivery": "cdek",
+        "payment": "card",
+        "comment": "",
+        "items": [{"id": 1, "qty": 2}],
+        "total": 1180
+      },
+      "expectedStatus": 201,
+      "expectedBody": {"message": "Заказ создан"},
+      "bodyMatcher": "partial"
+    }
+  ]
+}
