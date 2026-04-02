@@ -12,13 +12,13 @@ const NAV_ITEMS = [
   { id: "contacts", label: "Контакты" },
 ];
 
-const PRODUCTS = [
-  { id: 1, name: "Хлопок PURE", weight: "100г / 200м", price: "590 ₽", color: "#F03E6E", tag: "Хит", fiber: "Хлопок 100%" },
-  { id: 2, name: "Меринос SOFT", weight: "100г / 180м", price: "890 ₽", color: "#2ECC8F", tag: "Новинка", fiber: "Меринос 100%" },
-  { id: 3, name: "Лён NATURAL", weight: "100г / 250м", price: "720 ₽", color: "#FFD234", tag: "", fiber: "Лён 100%" },
-  { id: 4, name: "Альпака CLOUD", weight: "50г / 150м", price: "1 290 ₽", color: "#7C3AED", tag: "Premium", fiber: "Альпака 80%, Шёлк 20%" },
-  { id: 5, name: "Бамбук BREEZE", weight: "100г / 220м", price: "650 ₽", color: "#FF6B35", tag: "", fiber: "Бамбук 100%" },
-  { id: 6, name: "Кашемир LUXE", weight: "50г / 120м", price: "2 100 ₽", color: "#E91E8C", tag: "Лимит", fiber: "Кашемир 100%" },
+export const PRODUCTS = [
+  { id: 1, name: "Хлопок PURE", weight: "100г / 200м", priceNum: 590, price: "590 ₽", color: "#F03E6E", tag: "Хит", fiber: "Хлопок 100%" },
+  { id: 2, name: "Меринос SOFT", weight: "100г / 180м", priceNum: 890, price: "890 ₽", color: "#2ECC8F", tag: "Новинка", fiber: "Меринос 100%" },
+  { id: 3, name: "Лён NATURAL", weight: "100г / 250м", priceNum: 720, price: "720 ₽", color: "#FFD234", tag: "", fiber: "Лён 100%" },
+  { id: 4, name: "Альпака CLOUD", weight: "50г / 150м", priceNum: 1290, price: "1 290 ₽", color: "#7C3AED", tag: "Premium", fiber: "Альпака 80%, Шёлк 20%" },
+  { id: 5, name: "Бамбук BREEZE", weight: "100г / 220м", priceNum: 650, price: "650 ₽", color: "#FF6B35", tag: "", fiber: "Бамбук 100%" },
+  { id: 6, name: "Кашемир LUXE", weight: "50г / 120м", priceNum: 2100, price: "2 100 ₽", color: "#E91E8C", tag: "Лимит", fiber: "Кашемир 100%" },
 ];
 
 const REVIEWS = [
@@ -35,13 +35,22 @@ const DELIVERY_OPTIONS = [
   { icon: "Gift", title: "Бесплатно", desc: "При заказе от 3 000 ₽", price: "0 ₽" },
 ];
 
+export type CartItem = { id: number; qty: number };
+
 export default function Index() {
   const navigate = useNavigate();
   const [activeSection, setActiveSection] = useState("catalog");
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
-  const [cartCount, setCartCount] = useState(0);
+  const [cart, setCart] = useState<CartItem[]>([]);
+  const [cartOpen, setCartOpen] = useState(false);
   const [activeFilter, setActiveFilter] = useState("Все");
   const [addedProduct, setAddedProduct] = useState<number | null>(null);
+
+  const cartCount = cart.reduce((s, i) => s + i.qty, 0);
+  const cartTotal = cart.reduce((s, i) => {
+    const p = PRODUCTS.find(p => p.id === i.id);
+    return s + (p ? p.priceNum * i.qty : 0);
+  }, 0);
 
   const scrollTo = (id: string) => {
     document.getElementById(id)?.scrollIntoView({ behavior: "smooth" });
@@ -49,18 +58,160 @@ export default function Index() {
     setMobileMenuOpen(false);
   };
 
-  const handleAddToCart = (productId: number) => {
-    setCartCount(prev => prev + 1);
+  const addToCart = (productId: number) => {
+    setCart(prev => {
+      const existing = prev.find(i => i.id === productId);
+      if (existing) return prev.map(i => i.id === productId ? { ...i, qty: i.qty + 1 } : i);
+      return [...prev, { id: productId, qty: 1 }];
+    });
     setAddedProduct(productId);
     setTimeout(() => setAddedProduct(null), 1500);
+  };
+
+  const changeQty = (productId: number, delta: number) => {
+    setCart(prev =>
+      prev
+        .map(i => i.id === productId ? { ...i, qty: i.qty + delta } : i)
+        .filter(i => i.qty > 0)
+    );
+  };
+
+  const removeFromCart = (productId: number) => {
+    setCart(prev => prev.filter(i => i.id !== productId));
   };
 
   const filters = ["Все", "Хлопок", "Меринос", "Альпака", "Кашемир", "Лён", "Бамбук"];
 
   return (
     <div className="min-h-screen bg-white font-body">
+
+      {/* CART OVERLAY */}
+      {cartOpen && (
+        <div
+          className="fixed inset-0 bg-black/50 z-50 backdrop-blur-sm"
+          onClick={() => setCartOpen(false)}
+        />
+      )}
+
+      {/* CART PANEL */}
+      <aside
+        className={`fixed top-0 right-0 h-full w-full max-w-md bg-white z-50 shadow-2xl flex flex-col transition-transform duration-300 ${
+          cartOpen ? "translate-x-0" : "translate-x-full"
+        }`}
+      >
+        {/* Шапка корзины */}
+        <div className="flex items-center justify-between px-6 py-5 border-b border-border">
+          <div>
+            <h2 className="font-display font-black text-xl text-iip-dark">КОРЗИНА</h2>
+            <p className="text-muted-foreground text-xs font-body mt-0.5">
+              {cartCount > 0 ? `${cartCount} ${cartCount === 1 ? "товар" : cartCount < 5 ? "товара" : "товаров"}` : "Пусто"}
+            </p>
+          </div>
+          <button
+            onClick={() => setCartOpen(false)}
+            className="w-9 h-9 rounded-xl bg-iip-cream flex items-center justify-center hover:bg-iip-dark hover:text-white transition-colors"
+          >
+            <Icon name="X" size={18} />
+          </button>
+        </div>
+
+        {/* Товары */}
+        <div className="flex-1 overflow-y-auto px-6 py-4 space-y-4">
+          {cart.length === 0 ? (
+            <div className="flex flex-col items-center justify-center h-full gap-4 text-center">
+              <div className="w-20 h-20 bg-iip-cream rounded-3xl flex items-center justify-center text-4xl">
+                🧶
+              </div>
+              <p className="font-display font-bold text-iip-dark">Корзина пуста</p>
+              <p className="text-muted-foreground font-body text-sm">Добавьте пряжу из каталога</p>
+              <button
+                onClick={() => { setCartOpen(false); scrollTo("catalog"); }}
+                className="bg-iip-pink text-white px-6 py-3 rounded-full font-display font-bold text-sm hover:bg-iip-pink/90 transition-colors"
+              >
+                Перейти в каталог
+              </button>
+            </div>
+          ) : (
+            cart.map(item => {
+              const product = PRODUCTS.find(p => p.id === item.id)!;
+              return (
+                <div key={item.id} className="flex gap-4 items-center group">
+                  {/* Цветной превью */}
+                  <div
+                    className="w-16 h-16 rounded-2xl flex-shrink-0 relative overflow-hidden"
+                    style={{ backgroundColor: product.color }}
+                  >
+                    <div className="absolute -right-2 -bottom-2 w-10 h-10 rounded-full border-2 border-white/30" />
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <p className="font-display font-bold text-sm text-iip-dark truncate">{product.name}</p>
+                    <p className="text-muted-foreground text-xs font-body">{product.weight}</p>
+                    <p className="text-iip-pink font-display font-black text-sm mt-1">
+                      {(product.priceNum * item.qty).toLocaleString("ru-RU")} ₽
+                    </p>
+                  </div>
+                  {/* Кол-во */}
+                  <div className="flex items-center gap-2">
+                    <button
+                      onClick={() => changeQty(item.id, -1)}
+                      className="w-7 h-7 rounded-lg bg-iip-cream hover:bg-iip-dark hover:text-white flex items-center justify-center transition-colors"
+                    >
+                      <Icon name="Minus" size={12} />
+                    </button>
+                    <span className="font-display font-bold text-sm w-4 text-center">{item.qty}</span>
+                    <button
+                      onClick={() => changeQty(item.id, 1)}
+                      className="w-7 h-7 rounded-lg bg-iip-cream hover:bg-iip-dark hover:text-white flex items-center justify-center transition-colors"
+                    >
+                      <Icon name="Plus" size={12} />
+                    </button>
+                  </div>
+                  <button
+                    onClick={() => removeFromCart(item.id)}
+                    className="w-7 h-7 rounded-lg text-muted-foreground hover:bg-red-50 hover:text-red-500 flex items-center justify-center transition-colors opacity-0 group-hover:opacity-100"
+                  >
+                    <Icon name="Trash2" size={13} />
+                  </button>
+                </div>
+              );
+            })
+          )}
+        </div>
+
+        {/* Итог и кнопка заказа */}
+        {cart.length > 0 && (
+          <div className="px-6 py-5 border-t border-border space-y-3">
+            {cartTotal >= 3000 && (
+              <div className="flex items-center gap-2 bg-iip-mint/10 text-iip-mint rounded-xl px-4 py-2.5 text-sm font-body">
+                <Icon name="Gift" size={15} />
+                Бесплатная доставка!
+              </div>
+            )}
+            <div className="flex items-center justify-between">
+              <span className="text-muted-foreground font-body text-sm">Итого:</span>
+              <span className="font-display font-black text-2xl text-iip-dark">
+                {cartTotal.toLocaleString("ru-RU")} ₽
+              </span>
+            </div>
+            <button
+              onClick={() => { setCartOpen(false); navigate("/checkout", { state: { cart } }); }}
+              className="w-full bg-iip-pink hover:bg-iip-pink/90 text-white py-4 rounded-xl font-display font-bold text-sm transition-all hover:shadow-lg hover:shadow-iip-pink/25 flex items-center justify-center gap-2"
+            >
+              <Icon name="CreditCard" size={16} />
+              Оформить заказ
+            </button>
+            <button
+              onClick={() => setCart([])}
+              className="w-full text-muted-foreground hover:text-red-500 py-2 font-body text-xs transition-colors"
+            >
+              Очистить корзину
+            </button>
+          </div>
+        )}
+      </aside>
+
       {/* NAVBAR */}
-      <nav className="fixed top-0 left-0 right-0 z-50 bg-iip-dark/95 backdrop-blur-md border-b border-white/10">
+      <nav className="fixed top-0 left-0 right-0 z-40 bg-iip-dark/95 backdrop-blur-md border-b border-white/10">
         <div className="max-w-7xl mx-auto px-4 h-16 flex items-center justify-between">
           <div className="font-display font-black text-xl text-white tracking-tight">
             IIP<span className="text-iip-pink">.</span>
@@ -72,9 +223,7 @@ export default function Index() {
                 key={item.id}
                 onClick={() => scrollTo(item.id)}
                 className={`text-sm font-body transition-colors ${
-                  activeSection === item.id
-                    ? "text-iip-pink"
-                    : "text-white/70 hover:text-white"
+                  activeSection === item.id ? "text-iip-pink" : "text-white/70 hover:text-white"
                 }`}
               >
                 {item.label}
@@ -91,7 +240,7 @@ export default function Index() {
               Войти
             </button>
             <button
-              onClick={() => scrollTo("catalog")}
+              onClick={() => setCartOpen(true)}
               className="relative bg-iip-pink hover:bg-iip-pink/90 text-white px-4 py-2 rounded-full text-sm font-display font-bold transition-all hover:scale-105 flex items-center gap-2"
             >
               <Icon name="ShoppingBag" size={16} />
@@ -155,10 +304,8 @@ export default function Index() {
               <span className="text-iip-mint text-sm font-body">100% органические волокна</span>
             </div>
             <h1 className="font-display font-black text-5xl md:text-7xl text-white leading-tight mb-6">
-              ПРЯЖА
-              <br />
-              <span className="text-gradient">БЕЗ</span>
-              <br />
+              ПРЯЖА<br />
+              <span className="text-gradient">БЕЗ</span><br />
               СИНТЕТИКИ
             </h1>
             <p className="text-white/60 text-lg mb-8 font-body max-w-md leading-relaxed">
@@ -178,13 +325,8 @@ export default function Index() {
                 О нас
               </button>
             </div>
-
             <div className="flex gap-8 mt-12">
-              {[
-                { num: "50+", label: "видов пряжи" },
-                { num: "12+", label: "волокон" },
-                { num: "4.9★", label: "рейтинг" },
-              ].map((stat) => (
+              {[{ num: "50+", label: "видов пряжи" }, { num: "12+", label: "волокон" }, { num: "4.9★", label: "рейтинг" }].map(stat => (
                 <div key={stat.label}>
                   <div className="font-display font-black text-2xl text-iip-yellow">{stat.num}</div>
                   <div className="text-white/50 text-xs font-body mt-1">{stat.label}</div>
@@ -245,50 +387,56 @@ export default function Index() {
           </div>
 
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
-            {PRODUCTS.map((product, i) => (
-              <div
-                key={product.id}
-                className="group bg-white rounded-3xl overflow-hidden shadow-sm hover:shadow-xl transition-all duration-300 hover:-translate-y-1"
-              >
+            {PRODUCTS.map(product => {
+              const qtyInCart = cart.find(i => i.id === product.id)?.qty ?? 0;
+              return (
                 <div
-                  className="h-48 relative overflow-hidden"
-                  style={{ backgroundColor: product.color }}
+                  key={product.id}
+                  className="group bg-white rounded-3xl overflow-hidden shadow-sm hover:shadow-xl transition-all duration-300 hover:-translate-y-1"
                 >
-                  <div className="absolute inset-0 opacity-20"
-                    style={{
-                      backgroundImage: 'repeating-linear-gradient(45deg, rgba(255,255,255,0.1) 0px, rgba(255,255,255,0.1) 2px, transparent 2px, transparent 20px)'
-                    }}
-                  />
-                  <div className="absolute bottom-4 left-4 text-white/80 font-body text-sm">{product.fiber}</div>
-                  {product.tag && (
-                    <div className="absolute top-4 right-4 bg-iip-dark text-white text-xs font-display font-bold px-3 py-1 rounded-full">
-                      {product.tag}
-                    </div>
-                  )}
-                  <div className="absolute -right-8 -bottom-8 w-32 h-32 rounded-full border-4 border-white/20" />
-                  <div className="absolute -right-4 -bottom-4 w-20 h-20 rounded-full border-4 border-white/15" />
-                </div>
+                  <div
+                    className="h-48 relative overflow-hidden"
+                    style={{ backgroundColor: product.color }}
+                  >
+                    <div className="absolute inset-0 opacity-20"
+                      style={{ backgroundImage: 'repeating-linear-gradient(45deg, rgba(255,255,255,0.1) 0px, rgba(255,255,255,0.1) 2px, transparent 2px, transparent 20px)' }}
+                    />
+                    <div className="absolute bottom-4 left-4 text-white/80 font-body text-sm">{product.fiber}</div>
+                    {product.tag && (
+                      <div className="absolute top-4 right-4 bg-iip-dark text-white text-xs font-display font-bold px-3 py-1 rounded-full">
+                        {product.tag}
+                      </div>
+                    )}
+                    {qtyInCart > 0 && (
+                      <div className="absolute top-4 left-4 bg-iip-mint text-white text-xs font-display font-black px-3 py-1 rounded-full">
+                        {qtyInCart} в корзине
+                      </div>
+                    )}
+                    <div className="absolute -right-8 -bottom-8 w-32 h-32 rounded-full border-4 border-white/20" />
+                    <div className="absolute -right-4 -bottom-4 w-20 h-20 rounded-full border-4 border-white/15" />
+                  </div>
 
-                <div className="p-5">
-                  <h3 className="font-display font-bold text-lg text-iip-dark mb-1">{product.name}</h3>
-                  <p className="text-muted-foreground text-sm font-body mb-4">{product.weight}</p>
-                  <div className="flex items-center justify-between">
-                    <span className="font-display font-black text-xl text-iip-dark">{product.price}</span>
-                    <button
-                      onClick={() => handleAddToCart(product.id)}
-                      className={`flex items-center gap-2 px-4 py-2 rounded-full text-sm font-display font-bold transition-all ${
-                        addedProduct === product.id
-                          ? "bg-iip-mint text-white scale-95"
-                          : "bg-iip-dark text-white hover:bg-iip-pink hover:scale-105"
-                      }`}
-                    >
-                      <Icon name={addedProduct === product.id ? "Check" : "Plus"} size={14} />
-                      {addedProduct === product.id ? "Добавлено" : "В корзину"}
-                    </button>
+                  <div className="p-5">
+                    <h3 className="font-display font-bold text-lg text-iip-dark mb-1">{product.name}</h3>
+                    <p className="text-muted-foreground text-sm font-body mb-4">{product.weight}</p>
+                    <div className="flex items-center justify-between">
+                      <span className="font-display font-black text-xl text-iip-dark">{product.price}</span>
+                      <button
+                        onClick={() => addToCart(product.id)}
+                        className={`flex items-center gap-2 px-4 py-2 rounded-full text-sm font-display font-bold transition-all ${
+                          addedProduct === product.id
+                            ? "bg-iip-mint text-white scale-95"
+                            : "bg-iip-dark text-white hover:bg-iip-pink hover:scale-105"
+                        }`}
+                      >
+                        <Icon name={addedProduct === product.id ? "Check" : "Plus"} size={14} />
+                        {addedProduct === product.id ? "Добавлено" : "В корзину"}
+                      </button>
+                    </div>
                   </div>
                 </div>
-              </div>
-            ))}
+              );
+            })}
           </div>
 
           <div className="text-center mt-10">
@@ -303,7 +451,6 @@ export default function Index() {
       <section id="about" className="py-20 bg-iip-dark relative overflow-hidden">
         <div className="absolute top-0 right-0 w-96 h-96 bg-iip-violet/20 rounded-full blur-3xl" />
         <div className="absolute bottom-0 left-0 w-72 h-72 bg-iip-mint/15 rounded-full blur-3xl" />
-
         <div className="relative z-10 max-w-7xl mx-auto px-4">
           <div className="grid md:grid-cols-2 gap-16 items-center">
             <div>
@@ -315,7 +462,6 @@ export default function Index() {
               <p className="text-white/50 font-body mb-8 leading-relaxed">
                 Каждый моток проходит проверку на состав и экологичность. Мы работаем напрямую с фермерами и мелкими производителями, которые разделяют наши ценности.
               </p>
-
               <div className="grid grid-cols-2 gap-4">
                 {[
                   { icon: "Leaf", label: "Без химии", desc: "Только натуральные красители" },
@@ -333,7 +479,6 @@ export default function Index() {
                 ))}
               </div>
             </div>
-
             <div className="grid grid-cols-2 gap-4">
               <div className="bg-iip-pink rounded-3xl p-6 text-white">
                 <div className="font-display font-black text-5xl mb-2">50+</div>
@@ -363,13 +508,9 @@ export default function Index() {
             <p className="text-iip-pink font-display text-sm font-bold mb-2 tracking-widest uppercase">Логистика</p>
             <h2 className="font-display font-black text-4xl text-iip-dark">ДОСТАВКА</h2>
           </div>
-
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 mb-12">
-            {DELIVERY_OPTIONS.map((opt) => (
-              <div
-                key={opt.title}
-                className="group border-2 border-iip-dark/10 hover:border-iip-pink rounded-3xl p-6 transition-all hover:shadow-lg hover:-translate-y-1"
-              >
+            {DELIVERY_OPTIONS.map(opt => (
+              <div key={opt.title} className="group border-2 border-iip-dark/10 hover:border-iip-pink rounded-3xl p-6 transition-all hover:shadow-lg hover:-translate-y-1">
                 <div className="w-12 h-12 bg-iip-cream rounded-2xl flex items-center justify-center mb-4 group-hover:bg-iip-pink/10 transition-colors">
                   <Icon name={opt.icon} size={22} className="text-iip-pink" />
                 </div>
@@ -379,7 +520,6 @@ export default function Index() {
               </div>
             ))}
           </div>
-
           <div className="bg-iip-dark rounded-3xl p-8 md:p-12 grid md:grid-cols-3 gap-8 text-white">
             {[
               { icon: "MapPin", color: "text-iip-pink", bg: "bg-iip-pink/20", title: "Самовывоз", desc: "Москва, ул. Садовая, 12. Пн–Пт 10:00–20:00, Сб–Вс 11:00–18:00" },
@@ -406,9 +546,8 @@ export default function Index() {
             <h2 className="font-display font-black text-4xl text-iip-dark">ОТЗЫВЫ</h2>
             <p className="text-muted-foreground font-body mt-3">Что говорят наши покупатели</p>
           </div>
-
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-10">
-            {REVIEWS.map((review) => (
+            {REVIEWS.map(review => (
               <div key={review.id} className="bg-white rounded-3xl p-6 shadow-sm hover:shadow-md transition-all">
                 <div className="flex items-start gap-4 mb-4">
                   <div className="w-12 h-12 bg-iip-cream rounded-2xl flex items-center justify-center text-2xl flex-shrink-0">
@@ -428,7 +567,6 @@ export default function Index() {
               </div>
             ))}
           </div>
-
           <div className="text-center">
             <div className="inline-flex items-center gap-6 bg-white rounded-3xl p-6 shadow-sm flex-wrap justify-center">
               <div>
@@ -463,7 +601,6 @@ export default function Index() {
               <p className="text-muted-foreground font-body mb-8">
                 Есть вопрос по составу или заказу? Напишите нам — ответим в течение часа.
               </p>
-
               <div className="space-y-4 mb-8">
                 {[
                   { icon: "Mail", label: "Email", value: "hello@iip-yarn.ru" },
@@ -482,7 +619,6 @@ export default function Index() {
                   </div>
                 ))}
               </div>
-
               <div className="flex gap-3">
                 {[
                   { icon: "MessageCircle", label: "Telegram" },
@@ -499,33 +635,20 @@ export default function Index() {
                 ))}
               </div>
             </div>
-
             <div className="bg-iip-cream rounded-3xl p-8">
               <h3 className="font-display font-bold text-iip-dark mb-6">Напишите нам</h3>
               <div className="space-y-4">
                 <div>
                   <label className="text-sm font-body text-muted-foreground mb-1.5 block">Ваше имя</label>
-                  <input
-                    type="text"
-                    placeholder="Анна"
-                    className="w-full bg-white border border-border rounded-xl px-4 py-3 font-body text-sm focus:outline-none focus:border-iip-pink transition-colors"
-                  />
+                  <input type="text" placeholder="Анна" className="w-full bg-white border border-border rounded-xl px-4 py-3 font-body text-sm focus:outline-none focus:border-iip-pink transition-colors" />
                 </div>
                 <div>
                   <label className="text-sm font-body text-muted-foreground mb-1.5 block">Email или телефон</label>
-                  <input
-                    type="text"
-                    placeholder="anna@mail.ru"
-                    className="w-full bg-white border border-border rounded-xl px-4 py-3 font-body text-sm focus:outline-none focus:border-iip-pink transition-colors"
-                  />
+                  <input type="text" placeholder="anna@mail.ru" className="w-full bg-white border border-border rounded-xl px-4 py-3 font-body text-sm focus:outline-none focus:border-iip-pink transition-colors" />
                 </div>
                 <div>
                   <label className="text-sm font-body text-muted-foreground mb-1.5 block">Сообщение</label>
-                  <textarea
-                    rows={4}
-                    placeholder="Вопрос про состав пряжи или заказ..."
-                    className="w-full bg-white border border-border rounded-xl px-4 py-3 font-body text-sm focus:outline-none focus:border-iip-pink transition-colors resize-none"
-                  />
+                  <textarea rows={4} placeholder="Вопрос про состав пряжи или заказ..." className="w-full bg-white border border-border rounded-xl px-4 py-3 font-body text-sm focus:outline-none focus:border-iip-pink transition-colors resize-none" />
                 </div>
                 <button className="w-full bg-iip-pink hover:bg-iip-pink/90 text-white py-4 rounded-xl font-display font-bold text-sm transition-all hover:shadow-lg hover:shadow-iip-pink/25">
                   Отправить
@@ -548,18 +671,12 @@ export default function Index() {
             </div>
             <div className="flex flex-wrap gap-4 justify-center">
               {NAV_ITEMS.map(item => (
-                <button
-                  key={item.id}
-                  onClick={() => scrollTo(item.id)}
-                  className="text-white/40 hover:text-white text-sm font-body transition-colors"
-                >
+                <button key={item.id} onClick={() => scrollTo(item.id)} className="text-white/40 hover:text-white text-sm font-body transition-colors">
                   {item.label}
                 </button>
               ))}
             </div>
-            <div className="text-white/30 font-body text-xs text-center">
-              © 2026 IIP. Все права защищены.
-            </div>
+            <div className="text-white/30 font-body text-xs text-center">© 2026 IIP. Все права защищены.</div>
           </div>
         </div>
       </footer>
